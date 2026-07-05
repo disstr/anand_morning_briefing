@@ -1,0 +1,23 @@
+name: Morning Briefing
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # UTC 00:00 = UB цагаар 08:00 (UB = UTC+8)
+  workflow_dispatch:        # GitHub дээрээс гараар ч ажиллуулж болно
+
+jobs:
+  send-briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python morning_briefing.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
