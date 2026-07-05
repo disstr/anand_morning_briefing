@@ -5,8 +5,10 @@ GitHub Actions дээр ажиллуулах хувилбар - token/chat_id-г
 """
 
 import os
+import re
 import requests
 import yfinance as yf
+from bs4 import BeautifulSoup
 from datetime import datetime
 
 # ============ ТОХИРГОО ============
@@ -73,6 +75,39 @@ def get_gold():
         return f"🥇 XAUUSD: авч чадсангүй ({e})"
 
 
+def get_zurhai():
+    """Билгийн тооллын өдрийн зурхай (19001950.mn - статик HTML тул
+    gogo.mn-ээс илүү найдвартай scrape хийгддэг)."""
+    try:
+        url = "https://www.19001950.mn/call/horoscope"
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
+        text = BeautifulSoup(r.text, "html.parser").get_text("\n")
+
+        def find(pattern):
+            m = re.search(pattern, text)
+            return m.group(1).strip() if m else None
+
+        billgiin = find(r"БИЛГИЙН ТООЛЛЫН:\s*(\d+)")
+        naran = find(r"Наран ургах шингэх:\s*([\d:\-]+)")
+        us = find(r"Үс засуулбал:\s*([^\n]+)")
+        day_desc = find(r"Билгийн тооллын \d+,\s*([^.]+өдөр)")
+
+        lines = []
+        if billgiin:
+            lines.append(f"🗓 Билгийн тооллын: {billgiin}")
+        if day_desc:
+            lines.append(f"📜 {day_desc}")
+        if naran:
+            lines.append(f"🌅 Наран ургах, шингэх: {naran}")
+        if us:
+            lines.append(f"💇 Үс засуулбал: {us}")
+
+        return "\n".join(lines) if lines else "🗓 Зурхайн мэдээлэл олдсонгүй"
+    except Exception as e:
+        return f"🗓 Зурхай авч чадсангүй ({e})"
+
+
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
@@ -89,6 +124,8 @@ def main():
         parts += [now_text, "", day_text, ""]
     except Exception as e:
         parts += [f"Цаг агаар авахад алдаа гарлаа: {e}", ""]
+
+    parts += [get_zurhai(), ""]
 
     parts.append(get_gold())
 
