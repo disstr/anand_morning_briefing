@@ -6,6 +6,7 @@ GitHub Actions дээр ажиллуулах хувилбар - token/chat_id-г
 
 import os
 import re
+import time
 import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
@@ -41,8 +42,17 @@ def get_weather():
         "timezone": "Asia/Ulaanbaatar",
         "forecast_days": 1,
     }
-    r = requests.get(url, params=params, timeout=15)
-    r.raise_for_status()
+    last_error = None
+    for attempt in range(3):  # 1 анхны оролдлого + 2 retry
+        try:
+            r = requests.get(url, params=params, timeout=15)
+            r.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            time.sleep(5)  # 5 секунд хүлээгээд дахин оролдоно
+    else:
+        raise last_error
     data = r.json()
 
     cur = data["current"]
